@@ -60,38 +60,66 @@ THAI_LETTERS = list("กขคงจฉชซฌญฎฏฐฑฒณดตถ�
 # Proper names the Thai dictionary breaker does not know; a line may never break inside them.
 # Extend with tools/pocketbook/names.txt (one name per line).
 NAMES = """
-พันจันทนุมาศ วชิรปราการ มังระ เนเมียวสีหบดี มังมหานรธา สุกี้พระนายกอง โพสาวหาญ พรานนก หันตรา กบแจะ เจ้าโล้
-บางปะกง ปราจีนบุรี นครนายก จันทบูร จันทบุรี สุริยาสน์อมรินทร์ สรรเพชญปราสาท ศรีสรรเพชญดาญาณ วิไชยประสิทธิ์
-พิชัยสงคราม ชำนาญไพรสณฑ์ เชียงเงิน พิชัยอาสา พรหมเสนา ราชเสน่หา อภัยภักดี ทองอยู่นกเล็ก ดำรงราชานุภาพ
-เอียวศรีวงศ์ คองบอง เฉียนหลง หมิงรุ่ย ลามาร์ บางปลาสร้อย ลุ่มมหาชัยชุมพล คีรีบัญชร สังข์กระจาย ใหญ่ชัยมงคล
+พันจันทนุมาศ วชิรปราการ มังระ เนเมียว|สีหบดี มังมหานรธา สุกี้|พระนายกอง โพสาวหาญ พรานนก หันตรา กบแจะ เจ้าโล้
+บางปะกง ปราจีนบุรี นครนายก จันทบูร จันทบุรี สุริยาสน์|อมรินทร์ สรรเพชญ|ปราสาท ศรีสรรเพชญ|ดาญาณ วิไชย|ประสิทธิ์
+พิชัยสงคราม ชำนาญ|ไพรสณฑ์ เชียงเงิน พิชัยอาสา พรหมเสนา ราชเสน่หา อภัยภักดี ทองอยู่|นกเล็ก ดำรง|ราชานุภาพ
+เอียวศรีวงศ์ คองบอง เฉียนหลง หมิงรุ่ย ลามาร์ บางปลาสร้อย ลุ่ม|มหาชัย|ชุมพล คีรีบัญชร สังข์กระจาย ใหญ่|ชัยมงคล
 โพธิ์สามต้น ข้าวเม่า ขื่อหน้า สีกุก ภูเขาทอง ขนอนหลวง โปรดสัตว์ เอกทัศ บรมโกศ เทพพิพิธ สวางคบุรี
-นครศรีธรรมราช ธนบุรีศรีมหาสมุทร ปราบดาภิเษก ราชมณเฑียร จุลศักราช หมื่นซ่อง บุญเมือง แหลมปู่เจ้า นาจอมเทียน
-ทุ่งเค็ด จีนเจียม ทองอิน แมงกี้มารหญ้า ไทรโยค สมุทรสงคราม ศิลาแลง สระบาป อังวะ หัตถเลขา นรินทรเทวี
-ประดู่ทรงธรรม มหาราชวงษ์ พงษาวดาร ชุตินธรานนท์ บริติชมิวเซียม ทิพากรวงศ์ สิทธิพันธ์ ศุกลรัตนเมธี
-พระยาตาก เจ้าตาก พระเจ้าตากสิน กรุงธนบุรี
+นครศรี|ธรรมราช ธนบุรี|ศรีมหาสมุทร ปราบดาภิเษก ราชมณเฑียร จุลศักราช หมื่นซ่อง บุญเมือง แหลมปู่เจ้า นาจอมเทียน
+ทุ่งเค็ด จีนเจียม ทองอิน แมงกี้|มารหญ้า ไทรโยค สมุทรสงคราม ศิลาแลง สระบาป อังวะ หัตถเลขา นรินทรเทวี
+ประดู่|ทรงธรรม มหาราชวงษ์ พงษาวดาร ชุตินธรานนท์ บริติช|มิวเซียม ทิพากรวงศ์ สิทธิพันธ์ ศุกลรัตน|เมธี
+พระยาตาก เจ้าตาก พระเจ้า|ตากสิน กรุงธนบุรี
 """.split()
 
 
+MAX_UNBREAKABLE = 12   # longer names would leave the previous justified line stretched
+NAME_SEGMENTS: dict[str, list[str]] = {}
+THAI_MARKS = re.compile("[ัิ-ฺ็-๎]")
+
+
+def visual_len(s: str) -> int:
+    """Characters that take horizontal space (Thai vowel/tone marks above/below do not)."""
+    return len(THAI_MARKS.sub("", s))
+
+
 def load_names(book_root: Path | None = None) -> list[str]:
-    """Built-in list + tools/pocketbook/names.txt + books/<id>/names.txt (one name per line)."""
-    names = list(NAMES)
+    """Built-in list + tools/pocketbook/names.txt + books/<id>/names.txt (one name per line).
+
+    A name may mark where a line is allowed to break with "|", e.g. "ฉบับ|หลวงประเสริฐ|อักษรนิติ์".
+    Each segment is kept whole. A name longer than MAX_UNBREAKABLE characters without "|"
+    is left to the normal word breaker (and reported), because keeping it whole would
+    stretch the line before it.
+    """
+    raw = list(NAMES)
     for extra in (HERE / "names.txt", (book_root / "names.txt") if book_root else None):
         if extra and extra.exists():
-            names += [l.strip() for l in extra.read_text(encoding="utf-8").splitlines()
-                      if l.strip() and not l.lstrip().startswith("#")]
-    return sorted(set(names), key=len, reverse=True)
+            raw += [l.strip() for l in extra.read_text(encoding="utf-8").splitlines()
+                    if l.strip() and not l.lstrip().startswith("#")]
+    NAME_SEGMENTS.clear()
+    for entry in raw:
+        segs = [x for x in entry.split("|") if x]
+        clean = "".join(segs)
+        if len(segs) == 1 and visual_len(clean) > MAX_UNBREAKABLE:
+            if book_root is not None:
+                WARNINGS.append(f"names.txt: '{clean}' is longer than {MAX_UNBREAKABLE} letters; "
+                                f"mark break points with | (left breakable for now)")
+            continue
+        if any(visual_len(x) > MAX_UNBREAKABLE for x in segs) and book_root is not None:
+            WARNINGS.append(f"names.txt: a segment of '{entry}' is longer than {MAX_UNBREAKABLE} characters")
+        NAME_SEGMENTS[clean] = segs
+    return sorted(NAME_SEGMENTS, key=len, reverse=True)
 
 
 def compile_names(names: list[str]) -> re.Pattern:
     return re.compile("(" + "|".join(map(re.escape, names)) + ")")
 
 
+WARNINGS: list[str] = []
 NAME_RE = compile_names(load_names())
 
 # print specs for images (see คู่มือส่งต้นฉบับ ข้อ ๔): effective resolution at printed size
 MIN_SCENE_PPI = 250      # opener art printed 136 mm wide incl. bleed  -> >= 1340 px wide
 MIN_FIGURE_PPI = 290     # full-page figure fitted in 98 x 124 mm       -> 3:4 needs ~1100 x 1470 px
-WARNINGS: list[str] = []
 
 
 def check_image(path: Path, kind: str) -> None:
@@ -166,9 +194,10 @@ class Typo:
                         if not piece:
                             continue
                         if k % 2:
-                            sp = Tag(name="span", attrs={"class": "nw"})
-                            sp.string = piece
-                            new.append(sp)
+                            for seg in NAME_SEGMENTS.get(piece, [piece]):
+                                sp = Tag(name="span", attrs={"class": "nw"})
+                                sp.string = seg
+                                new.append(sp)
                         else:
                             new.append(NavigableString(piece))
                     ch.replace_with(*new)
@@ -686,15 +715,19 @@ def build_book(book: dict, part: dict, flows: dict, typo: Typo, extra: dict) -> 
             if pg["type"] == "fig":
                 fb = pg["block"]
                 cap = fb.extra["cap"]
-                pages.append(Page("fig", f'<figure><img src="{Path(fb.extra["src"]).as_uri()}" alt="">'
-                                         f'<figcaption>{cap}</figcaption></figure>', cls="figpage"))
+                src = Path(fb.extra["src"])
+                img = (f'<img src="{src.as_uri()}" alt="">' if src.exists() else
+                       f'<div class="ph-fig"><b>ภาพรอสร้าง</b><span>{html.escape(src.name)}</span></div>')
+                pages.append(Page("fig", f'<figure>{img}<figcaption>{cap}</figcaption></figure>', cls="figpage"))
                 continue
             inner = "".join(fr.html() for fr in pg["frags"])
             if pg["first"]:
                 head = spacer(first_line - 1) + flow.title.render(0, None, True, True) + spacer(1)
                 art = ""
                 if flow.art:
-                    art = f'<div class="opener-art"><img src="{Path(flow.art).as_uri()}" alt=""></div>'
+                    ap = Path(flow.art)
+                    art = (f'<div class="opener-art"><img src="{ap.as_uri()}" alt=""></div>' if ap.exists() else
+                           f'<div class="opener-art ph-art"><b>ภาพฉากรอสร้าง</b><span>{html.escape(ap.name)}</span></div>')
                 pages.append(Page("opener", head + inner, cls="opener", label=art))
             else:
                 pages.append(Page("text", inner))
@@ -808,7 +841,8 @@ def front_matter(book: dict, part: dict, flows: dict, typo: Typo, extra: dict, t
             '<div class="sec-title"><div class="eb">CONTENTS</div><div class="main">สารบัญ</div>'
             '<div class="rule"><i></i><i></i><i></i></div></div>', spacer(1)]
     rows.append(row('<span class="fm">คำนำ</span>', letter(ftoc["preface"]), "fm"))
-    rows.append(row('<span class="fm">เส้นเวลา ๑๕ ปีแห่งกระดานศึก</span>', letter(ftoc["timeline"]), "fm"))
+    tl_title = typo.text(book.get("timeline_heading", "เส้นเวลา"))
+    rows.append(row(f'<span class="fm">{tl_title}</span>', letter(ftoc["timeline"]), "fm"))
     rows.append(f'<div class="part">ภาคที่ {pn} · {pname}</div>')
     for ep in extra["eps"]:
         k = f"ep{ep['num']}"

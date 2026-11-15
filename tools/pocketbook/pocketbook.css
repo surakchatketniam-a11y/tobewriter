@@ -156,6 +156,15 @@ body > .page, body > .sheet { break-after: page; }
   background: linear-gradient(to bottom, rgba(255,255,255,0), #fff);
 }
 
+/* placeholders for images that are not made yet (proofs only) */
+.ph-art { height: 76.5mm; background: repeating-linear-gradient(135deg, #efe8da 0 6mm, #e8dfcd 6mm 12mm);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.5mm; }
+.ph-art::after { display: none; }
+.ph-art b, .ph-fig b { font: 700 10pt/1.3 var(--sans); color: var(--accent); }
+.ph-art span, .ph-fig span { font: 400 8pt/1.3 var(--sans); color: var(--muted); }
+.ph-fig { width: 93mm; height: 124mm; border: 0.8pt dashed #b9ab92; background: #f6f1e7;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.5mm; }
+
 /* full-page figure */
 .figpage .tb { display: flex; flex-direction: column; align-items: center; justify-content: center; }
 .figpage figure { margin: 0; display: flex; flex-direction: column; align-items: center; width: 100%; }
