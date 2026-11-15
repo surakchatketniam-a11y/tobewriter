@@ -777,6 +777,16 @@ def front_matter(book: dict, part: dict, flows: dict, typo: Typo, extra: dict, t
         v = book.get(key)
         return typo.text(v) if v else f'<span class="ph">[{placeholder}]</span>'
     author, publisher = field("author", "ชื่อผู้เขียน"), field("publisher", "ชื่อสำนักพิมพ์")
+    # "ผู้เรียบเรียง" (compiler) suits a history retold from the chronicles with AI drafting help.
+    role = book.get("author_role", "ผู้เขียน")
+    byline = {"ผู้เรียบเรียง": "เรียบเรียงโดย", "ผู้เขียน": "เขียนโดย"}.get(role, role)
+
+    def opt(key: str, placeholder: str, line: str) -> str:
+        """A copyright-page line that the ebook drops while its value is still unknown
+        (an ebook goes out as is; a print proof keeps the placeholder as a reminder)."""
+        if not book.get(key) and ebook:
+            return ""
+        return line.format(field(key, placeholder))
 
     def pad():
         if not ebook and len(fm) % 2:
@@ -799,20 +809,32 @@ def front_matter(book: dict, part: dict, flows: dict, typo: Typo, extra: dict, t
         <div class="pt">ภาคที่ {pn}</div><div class="pn">{pname}</div>
         <div class="py">{typo.text(part["years"])} · ตอนที่ {typo.num(part["episodes"][0])}–{typo.num(part["episodes"][-1])}</div>
         </div>
-        <div class="foot"><div class="au">{author}</div><div class="pub">{publisher}</div></div>''',
+        <div class="foot"><div class="au">{byline} {author}</div><div class="pub">{publisher}</div></div>''',
                      cls="titlepage"))
+    cip = opt("cip", "รอข้อมูลจากหอสมุดแห่งชาติ",
+              '<p class="cip">ข้อมูลทางบรรณานุกรมของหอสมุดแห่งชาติ (CIP)<br>{}</p>')
+    isbn = opt("isbn", "เลข ISBN", ("e-ISBN " if ebook else "ISBN ") + "{}<br>")
+    edition = (opt("edition", "เดือน ปี", "เผยแพร่ครั้งแรก (ฉบับอิเล็กทรอนิกส์) {}") if ebook else
+               "พิมพ์ครั้งที่ ๑ " + field("edition", "เดือน ปี") + ' จำนวน <span class="ph">[จำนวน]</span> เล่ม')
+    ai = f'<p>{typo.text(book["ai_disclosure"])}</p>' if book.get("ai_disclosure") else ""
+    year = f'© พ.ศ. {typo.text(str(book["copyright_year"]))} {author} ' if book.get("copyright_year") else ""
+    if book.get("publisher_address"):
+        imprint = typo.text(book["publisher_address"])
+    elif ebook:
+        imprint = publisher
+    else:
+        imprint = field("publisher_address", "ชื่อและที่อยู่สำนักพิมพ์ / โรงพิมพ์")
     fm.append(Page("fixed", f'''<div class="inner">
-        <p class="cip">ข้อมูลทางบรรณานุกรมของหอสมุดแห่งชาติ (CIP)<br><span class="ph">[รอข้อมูลจากหอสมุดแห่งชาติ]</span></p>
+        {cip}
         <p><b>{title}</b><br>ภาคที่ {pn} : {pname}</p>
-        <p>ผู้เขียน {author}<br>
-           {"e-ISBN" if ebook else "ISBN"} {field("isbn", "เลข ISBN")}<br>
-           {("เผยแพร่ครั้งแรก (ฉบับอิเล็กทรอนิกส์) " + field("edition", "เดือน ปี")) if ebook else
-            ("พิมพ์ครั้งที่ ๑ " + field("edition", "เดือน ปี") + ' จำนวน <span class="ph">[จำนวน]</span> เล่ม')}</p>
+        <p>{role} {author}<br>
+           {isbn}{edition}</p>
         <p>ภาพประกอบและแผนที่ {field("image_credit", "ระบุผู้สร้างและที่มาของภาพ")}<br>
            {"" if ebook else "จัดรูปเล่ม ขนาด ๑๓ × ๑๘.๕ ซม. "}เรียงพิมพ์ด้วย Noto Serif Thai และ Noto Sans Thai</p>
         <p>เรียบเรียงจาก {typo.text(book.get("colophon_sources", ""))}</p>
-        <p>สงวนลิขสิทธิ์ตามพระราชบัญญัติลิขสิทธิ์ ห้ามคัดลอก ทำซ้ำ หรือเผยแพร่ส่วนใดส่วนหนึ่งของหนังสือเล่มนี้ โดยไม่ได้รับอนุญาตเป็นลายลักษณ์อักษร</p>
-        <p>{field("publisher_address", "ชื่อและที่อยู่สำนักพิมพ์" + ("" if ebook else " / โรงพิมพ์"))}</p></div>''', cls="copyright"))
+        {ai}
+        <p>{year}สงวนลิขสิทธิ์ตามพระราชบัญญัติลิขสิทธิ์ ห้ามคัดลอก ทำซ้ำ หรือเผยแพร่ส่วนใดส่วนหนึ่งของหนังสือเล่มนี้ โดยไม่ได้รับอนุญาตเป็นลายลักษณ์อักษร</p>
+        <p>{imprint}</p></div>''', cls="copyright"))
 
     def emit(flow: Flow, key: str):
         pad()
