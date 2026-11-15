@@ -72,15 +72,58 @@ NAMES = """
 """.split()
 
 
-def load_names() -> list[str]:
-    extra = HERE / "names.txt"
+def load_names(book_root: Path | None = None) -> list[str]:
+    """Built-in list + tools/pocketbook/names.txt + books/<id>/names.txt (one name per line)."""
     names = list(NAMES)
-    if extra.exists():
-        names += [l.strip() for l in extra.read_text(encoding="utf-8").splitlines() if l.strip()]
+    for extra in (HERE / "names.txt", (book_root / "names.txt") if book_root else None):
+        if extra and extra.exists():
+            names += [l.strip() for l in extra.read_text(encoding="utf-8").splitlines()
+                      if l.strip() and not l.lstrip().startswith("#")]
     return sorted(set(names), key=len, reverse=True)
 
 
-NAME_RE = re.compile("(" + "|".join(map(re.escape, load_names())) + ")")
+def compile_names(names: list[str]) -> re.Pattern:
+    return re.compile("(" + "|".join(map(re.escape, names)) + ")")
+
+
+NAME_RE = compile_names(load_names())
+
+# print specs for images (see คู่มือส่งต้นฉบับ ข้อ ๔): effective resolution at printed size
+MIN_SCENE_PPI = 250      # opener art printed 136 mm wide incl. bleed  -> >= 1340 px wide
+MIN_FIGURE_PPI = 290     # full-page figure fitted in 98 x 124 mm       -> 3:4 needs ~1100 x 1470 px
+WARNINGS: list[str] = []
+
+
+def check_image(path: Path, kind: str) -> None:
+    if not path.exists():
+        WARNINGS.append(f"missing image: {path}")
+        return
+    try:
+        from PIL import Image
+        with Image.open(path) as im:
+            w, h = im.size
+            mode = im.mode
+    except Exception as exc:  # noqa: BLE001
+        WARNINGS.append(f"unreadable image {path.name}: {exc}")
+        return
+    if kind == "scene":
+        width_mm, need = TRIM_W + 2 * BLEED, MIN_SCENE_PPI
+    else:
+        width_mm, need = min(98.0, 124.0 * w / h), MIN_FIGURE_PPI
+    ppi = w / (width_mm / 25.4)
+    if ppi < need:
+        WARNINGS.append(f"low resolution {kind} {path.name}: {w}x{h}px = {ppi:.0f} ppi in print (need >= {need})")
+    if mode == "CMYK":
+        WARNINGS.append(f"{path.name} is CMYK; supply sRGB")
+
+
+def split_title(title: str) -> tuple[str, str]:
+    """Main title / subtitle split at the first space that is not next to a digit."""
+    for m in re.finditer(" ", title):
+        k = m.start()
+        if not (title[k - 1].isdigit() or (k + 1 < len(title) and title[k + 1].isdigit())):
+            return title[:k], title[k + 1:]
+    return title, ""
 
 
 # --------------------------------------------------------------------------- text
@@ -355,10 +398,17 @@ def parse_episode(path: Path, ep: int, images: Path, typo: Typo) -> dict:
                 blocks.append(para_from(p, typo, cls="noindent"))
             i += 1
             continue
-        print(f"  ! ep{ep}: unhandled element <{e.name}>", file=sys.stderr)
+        WARNINGS.append(f"ep{ep}: unsupported Markdown element <{e.name}> skipped")
         i += 1
 
-    main, sub = (title.split(" ", 1) + [""])[:2]
+    main, sub = split_title(title)
+    if art is None:
+        WARNINGS.append(f"ep{ep}: no opening scene image (first image before any text)")
+    else:
+        check_image(Path(art), "scene")
+    for b in blocks:
+        if b.kind == "fig":
+            check_image(Path(b.extra["src"]), "figure")
     return {"num": ep, "title": title, "main": typo.text(main), "sub": typo.text(sub),
             "art": art, "blocks": blocks}
 
@@ -860,6 +910,8 @@ def main():
     args = ap.parse_args()
 
     root = REPO / "books" / args.book
+    global NAME_RE
+    NAME_RE = compile_names(load_names(root))
     book = json.loads((root / "book.json").read_text(encoding="utf-8"))
     part = next(p for p in book["parts"] if p["part"] == args.part)
     typo = Typo(thai_digits=not args.arabic_digits)
@@ -929,6 +981,10 @@ def main():
                   + (f"  !! overflow on pages {over}" if n_over else "  text fits every page"))
         browser.close()
         chrome.close()
+    if WARNINGS:
+        print(f"manuscript warnings ({len(WARNINGS)}):")
+        for w in WARNINGS:
+            print("  - " + w)
     print(f"work files: {work}")
 
 
