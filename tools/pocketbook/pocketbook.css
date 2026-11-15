@@ -240,6 +240,7 @@ body > .page, body > .sheet { break-after: page; }
 .ph { color: #a0522d; }      /* placeholder text still to be supplied */
 
 /* table of contents */
+.toc a.row { color: inherit; text-decoration: none; }
 .toc .inner { position: absolute; left: var(--inside); width: var(--tb-w); top: var(--tb-top); }
 .toc .row { display: grid; grid-template-columns: 1fr auto; column-gap: 2mm; align-items: baseline; }
 .toc .lead { display: flex; align-items: baseline; gap: 1.6mm; min-width: 0; }
@@ -252,6 +253,31 @@ body > .page, body > .sheet { break-after: page; }
 .toc .ch .tt { font: 700 9.8pt/var(--lh) var(--serif); }
 .toc .ch .ts { font: 400 8.4pt/1.5 var(--serif); color: var(--muted); }
 .toc .back { margin-top: calc(var(--lh) * 0.9); }
+
+/* ---------- ebook cover ---------- */
+.cover { background: #2b0e0a; color: #f7ecd8; }
+.cover .cv-art, .cover .cv-plain { position: absolute; inset: calc(-1 * var(--bleed)); }
+.cover .cv-art { background-size: cover; background-position: center; }
+.cover .cv-plain {
+  background:
+    radial-gradient(ellipse at 50% 30%, rgba(226,197,143,0.22), rgba(0,0,0,0) 55%),
+    repeating-linear-gradient(45deg, rgba(226,197,143,0.05) 0 0.4mm, rgba(0,0,0,0) 0.4mm 7mm),
+    linear-gradient(175deg, #8e2a1f 0%, #5e1912 48%, #240a07 100%);
+}
+.cover .cv-shade { position: absolute; inset: 0;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0) 42%, rgba(0,0,0,0) 58%, rgba(0,0,0,0.62) 100%); }
+.cover .cv-top { position: absolute; left: 12mm; right: 12mm; top: 22mm; text-align: center; }
+.cover .eb { font: 600 7.6pt/1.3 var(--sans); letter-spacing: 0.06em; color: #e6c98f; }
+.cover .pre { font: 800 15pt/1.2 var(--serif); color: #ebd09a; margin-top: 9mm; letter-spacing: 0.05em; }
+.cover .t { font: 800 29pt/1.32 var(--serif); color: #fcf4e6; margin-top: 2mm; text-wrap: balance;
+  text-shadow: 0 0.6mm 2.4mm rgba(0,0,0,0.45); }
+.cover .cv-bottom { position: absolute; left: 12mm; right: 12mm; bottom: 19mm; text-align: center; }
+.cover .rule { display: flex; justify-content: center; gap: 2.4mm; margin-bottom: 6mm; }
+.cover .rule i { width: 1.8mm; height: 1.8mm; background: #e6c98f; transform: rotate(45deg); }
+.cover .pt { font: 600 8pt/1.3 var(--sans); letter-spacing: 0.06em; color: #e6c98f; }
+.cover .pn { font: 800 17pt/1.5 var(--serif); margin-top: 1mm; text-wrap: balance; }
+.cover .py { font: 500 8pt/1.3 var(--sans); letter-spacing: 0.08em; color: #e6c98f; margin-top: 1.5mm; }
+.cover .au { font: 700 10.5pt/1.4 var(--serif); margin-top: 8mm; }
 
 /* ---------- print sheet (bleed + crop marks) ---------- */
 .sheet { position: relative; overflow: hidden; background: #fff; }

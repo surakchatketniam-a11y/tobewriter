@@ -698,12 +698,13 @@ def spacer(lines: int) -> str:
     return f'<div style="height:{lines * LH_PT}pt"></div>' if lines else ""
 
 
-def build_book(book: dict, part: dict, flows: dict, typo: Typo, extra: dict) -> tuple[list[Page], dict]:
+def build_book(book: dict, part: dict, flows: dict, typo: Typo, extra: dict,
+               ebook: bool = False) -> tuple[list[Page], dict]:
     body: list[Page] = []
     toc: dict = {}
 
     def pad_to_recto(pages: list[Page]):
-        if len(pages) % 2 == 1:
+        if not ebook and len(pages) % 2 == 1:
             pages.append(Page("blank"))
 
     def emit_flow(pages: list[Page], flow: Flow, first_line: int, toc_key: str):
@@ -749,7 +750,7 @@ def build_book(book: dict, part: dict, flows: dict, typo: Typo, extra: dict) -> 
     for ep in extra["eps"]:
         emit_flow(body, flows[f"ep{ep['num']}"], OPENER_FIRST_LINE, f"ep{ep['num']}")
     emit_flow(body, flows["bib"], SECTION_FIRST_LINE, "bib")
-    if len(body) % 2:
+    if not ebook and len(body) % 2:
         body.append(Page("blank"))
 
     for idx, p in enumerate(body):
@@ -761,7 +762,9 @@ def build_book(book: dict, part: dict, flows: dict, typo: Typo, extra: dict) -> 
     return body, toc
 
 
-def front_matter(book: dict, part: dict, flows: dict, typo: Typo, extra: dict, toc_body: dict) -> tuple[list[Page], dict]:
+def front_matter(book: dict, part: dict, flows: dict, typo: Typo, extra: dict, toc_body: dict,
+                 ebook: bool = False, offset: int = 0) -> tuple[list[Page], dict]:
+    """offset = pages placed before the front matter in the file (the ebook cover)."""
     fm: list[Page] = []
     ftoc = {}
     title = book["title"]
@@ -769,6 +772,15 @@ def front_matter(book: dict, part: dict, flows: dict, typo: Typo, extra: dict, t
         if title.count(" ") >= 2 else ("", title)
     pname = part["name"].split(":", 1)[1].strip()
     pn = typo.num(part["part"])
+
+    def field(key: str, placeholder: str) -> str:
+        v = book.get(key)
+        return typo.text(v) if v else f'<span class="ph">[{placeholder}]</span>'
+    author, publisher = field("author", "ชื่อผู้เขียน"), field("publisher", "ชื่อสำนักพิมพ์")
+
+    def pad():
+        if not ebook and len(fm) % 2:
+            fm.append(Page("blank"))
 
     fm.append(Page("fixed", f'''<div class="inner"><div class="t1">{t_pre}</div><div class="t2">{t_main}</div>
         <div class="t3">ภาคที่ {pn} · {pname}</div></div>''', cls="halftitle"))
@@ -787,23 +799,23 @@ def front_matter(book: dict, part: dict, flows: dict, typo: Typo, extra: dict, t
         <div class="pt">ภาคที่ {pn}</div><div class="pn">{pname}</div>
         <div class="py">{typo.text(part["years"])} · ตอนที่ {typo.num(part["episodes"][0])}–{typo.num(part["episodes"][-1])}</div>
         </div>
-        <div class="foot"><div class="au ph">[ชื่อผู้เขียน]</div><div class="pub ph">[ชื่อสำนักพิมพ์]</div></div>''',
+        <div class="foot"><div class="au">{author}</div><div class="pub">{publisher}</div></div>''',
                      cls="titlepage"))
     fm.append(Page("fixed", f'''<div class="inner">
         <p class="cip">ข้อมูลทางบรรณานุกรมของหอสมุดแห่งชาติ (CIP)<br><span class="ph">[รอข้อมูลจากหอสมุดแห่งชาติ]</span></p>
         <p><b>{title}</b><br>ภาคที่ {pn} : {pname}</p>
-        <p>ผู้เขียน <span class="ph">[ชื่อผู้เขียน]</span><br>
-           ISBN <span class="ph">[เลข ISBN]</span><br>
-           พิมพ์ครั้งที่ ๑ <span class="ph">[เดือน ปี]</span> จำนวน <span class="ph">[จำนวน]</span> เล่ม</p>
-        <p>ภาพประกอบและแผนที่ <span class="ph">[ระบุผู้สร้างและที่มาของภาพ]</span><br>
-           จัดรูปเล่ม ขนาด ๑๓ × ๑๘.๕ ซม. เรียงพิมพ์ด้วย Noto Serif Thai และ Noto Sans Thai</p>
+        <p>ผู้เขียน {author}<br>
+           {"e-ISBN" if ebook else "ISBN"} {field("isbn", "เลข ISBN")}<br>
+           {("เผยแพร่ครั้งแรก (ฉบับอิเล็กทรอนิกส์) " + field("edition", "เดือน ปี")) if ebook else
+            ("พิมพ์ครั้งที่ ๑ " + field("edition", "เดือน ปี") + ' จำนวน <span class="ph">[จำนวน]</span> เล่ม')}</p>
+        <p>ภาพประกอบและแผนที่ {field("image_credit", "ระบุผู้สร้างและที่มาของภาพ")}<br>
+           {"" if ebook else "จัดรูปเล่ม ขนาด ๑๓ × ๑๘.๕ ซม. "}เรียงพิมพ์ด้วย Noto Serif Thai และ Noto Sans Thai</p>
         <p>เรียบเรียงจาก {typo.text(book.get("colophon_sources", ""))}</p>
         <p>สงวนลิขสิทธิ์ตามพระราชบัญญัติลิขสิทธิ์ ห้ามคัดลอก ทำซ้ำ หรือเผยแพร่ส่วนใดส่วนหนึ่งของหนังสือเล่มนี้ โดยไม่ได้รับอนุญาตเป็นลายลักษณ์อักษร</p>
-        <p><span class="ph">[ชื่อและที่อยู่สำนักพิมพ์ / โรงพิมพ์]</span></p></div>''', cls="copyright"))
+        <p>{field("publisher_address", "ชื่อและที่อยู่สำนักพิมพ์" + ("" if ebook else " / โรงพิมพ์"))}</p></div>''', cls="copyright"))
 
     def emit(flow: Flow, key: str):
-        if len(fm) % 2:
-            fm.append(Page("blank"))
+        pad()
         ftoc[key] = len(fm)
         title_lines = flow.title.lines
         first_cap = LINES - (SECTION_FIRST_LINE - 1) - title_lines - 1
@@ -818,13 +830,11 @@ def front_matter(book: dict, part: dict, flows: dict, typo: Typo, extra: dict, t
 
     emit(flows["preface"], "preface")
     # table of contents (single page, filled in below)
-    if len(fm) % 2:
-        fm.append(Page("blank"))
+    pad()
     ftoc["toc"] = len(fm)
     fm.append(Page("toc", "", cls="toc"))
     emit(flows["timeline"], "timeline")
-    if len(fm) % 2:
-        fm.append(Page("blank"))
+    pad()
 
     letter = lambda i: THAI_LETTERS[i]
     for idx, p in enumerate(fm):
@@ -835,28 +845,50 @@ def front_matter(book: dict, part: dict, flows: dict, typo: Typo, extra: dict, t
             p.rh = p.flow.rh_recto if p.side == "recto" else p.flow.rh_verso
 
     # TOC body
-    def row(lead: str, page: str, cls: str) -> str:
-        return f'<div class="row {cls}"><div class="lead">{lead}</div><div class="pg">{page}</div></div>'
+    body0 = offset + len(fm)          # file index of the first body page
+
+    def row(lead: str, page: str, cls: str, target: int) -> str:
+        return (f'<a class="row {cls}" href="#pg-{target}"><span class="lead">{lead}</span>'
+                f'<span class="pg">{page}</span></a>')
     rows = [spacer(SECTION_FIRST_LINE - 2),
             '<div class="sec-title"><div class="eb">CONTENTS</div><div class="main">สารบัญ</div>'
             '<div class="rule"><i></i><i></i><i></i></div></div>', spacer(1)]
-    rows.append(row('<span class="fm">คำนำ</span>', letter(ftoc["preface"]), "fm"))
+    rows.append(row('<span class="fm">คำนำ</span>', letter(ftoc["preface"]), "fm", offset + ftoc["preface"]))
     tl_title = typo.text(book.get("timeline_heading", "เส้นเวลา"))
-    rows.append(row(f'<span class="fm">{tl_title}</span>', letter(ftoc["timeline"]), "fm"))
+    rows.append(row(f'<span class="fm">{tl_title}</span>', letter(ftoc["timeline"]), "fm", offset + ftoc["timeline"]))
     rows.append(f'<div class="part">ภาคที่ {pn} · {pname}</div>')
     for ep in extra["eps"]:
         k = f"ep{ep['num']}"
         rows.append(f'<div class="ch"><div class="n">{typo.num(ep["num"])}</div><div>'
-                    + row(f'<span class="tt">{ep["main"]}</span>', typo.num(toc_body[k] + 1), "")
+                    + row(f'<span class="tt">{ep["main"]}</span>', typo.num(toc_body[k] + 1), "", body0 + toc_body[k])
                     + f'<div class="ts">{ep["sub"]}</div></div></div>')
     rows.append('<div class="back">' + row('<span class="fm">บรรณานุกรมประจำภาค</span>',
-                                           typo.num(toc_body["bib"] + 1), "fm") + "</div>")
+                                           typo.num(toc_body["bib"] + 1), "fm", body0 + toc_body["bib"]) + "</div>")
     fm[ftoc["toc"]].body = '<div class="inner">' + "".join(rows) + "</div>"
     return fm, ftoc
 
 
+def cover_page(book: dict, part: dict, typo: Typo, root: Path) -> Page:
+    """Front cover for the ebook. Uses images/cover_partN.(jpg|png) when it exists."""
+    title = book["title"]
+    t_pre, t_main = (" ".join(title.split(" ", 2)[:2]), title.split(" ", 2)[2]) if title.count(" ") >= 2 else ("", title)
+    pname = part["name"].split(":", 1)[1].strip()
+    art = next((root / "images" / f"cover_part{part['part']}.{e}" for e in ("jpg", "png")
+                if (root / "images" / f"cover_part{part['part']}.{e}").exists()), None)
+    bg = (f'<div class="cv-art" style="background-image:url(\'{art.as_uri()}\')"></div>' if art
+          else '<div class="cv-plain"></div>')
+    author = typo.text(book["author"]) if book.get("author") else ""
+    return Page("cover", f'''{bg}<div class="cv-shade"></div>
+      <div class="cv-top"><div class="eb">{book.get("eyebrow", "")}</div>
+        <div class="pre">{t_pre}</div><div class="t">{t_main}</div></div>
+      <div class="cv-bottom"><div class="rule"><i></i><i></i><i></i></div>
+        <div class="pt">ภาคที่ {typo.num(part["part"])}</div><div class="pn">{pname}</div>
+        <div class="py">{typo.text(part["years"])}</div>
+        {f'<div class="au">{author}</div>' if author else ""}</div>''', cls="cover")
+
+
 # --------------------------------------------------------------------------- output
-def page_html(p: Page) -> str:
+def page_html(p: Page, idx: int = 0) -> str:
     rh = f'<div class="rh">{p.rh}</div>' if p.rh else ""
     fo = f'<div class="folio">{p.folio}</div>' if p.folio else ""
     if p.kind in ("text", "opener", "fig"):
@@ -865,12 +897,13 @@ def page_html(p: Page) -> str:
         inner = ""
     else:
         inner = p.body
-    return f'<section class="page {p.side} {p.cls}">{inner}{rh}{fo}</section>'
+    return f'<section class="page {p.side} {p.cls}" id="pg-{idx}">{inner}{rh}{fo}</section>'
 
 
-def write_pdf(browser, work: Path, css: Path, pages: list[Page], out: Path, mode: str, align: str) -> int:
-    if mode == "proof":
-        sheets = "".join(page_html(p) for p in pages)
+def write_pdf(browser, work: Path, css: Path, pages: list[Page], out: Path, mode: str, align: str,
+              outline: list | None = None, meta: dict | None = None):
+    if mode in ("proof", "ebook"):
+        sheets = "".join(page_html(p, i) for i, p in enumerate(pages))
         size = f"{TRIM_W}mm {TRIM_H}mm"
         overflow_sel = ".page"
     else:
@@ -890,7 +923,7 @@ def write_pdf(browser, work: Path, css: Path, pages: list[Page], out: Path, mode
                     marks.append(f'<div class="mark" style="left:{x - 0.0353}mm;top:{vy}mm;width:0.25pt;height:{L}mm"></div>')
             slug = (f'<div class="slugtxt" style="left:{off}mm;top:{sh - SLUG + 3.5}mm">'
                     f'{html.escape(out.stem)} · หน้า {n}/{len(pages)} · ตัดเจียน 130 × 185 มม. · ตัดตก 3 มม.</div>')
-            pg = page_html(p).replace('class="page ', 'class="page ', 1)
+            pg = page_html(p, n - 1)
             out_sheets.append(
                 f'<div class="sheet" style="width:{sw}mm;height:{sh}mm">'
                 f'<div class="bleedbox" style="left:{SLUG}mm;top:{SLUG}mm;width:{TRIM_W + 2 * BLEED}mm;height:{TRIM_H + 2 * BLEED}mm">'
@@ -899,7 +932,9 @@ def write_pdf(browser, work: Path, css: Path, pages: list[Page], out: Path, mode
         sheets = "".join(out_sheets)
         overflow_sel = ".page"
     extra_css = (f"@page{{size:{size};margin:0}} :root{{--align:{align}}}"
-                 + (" .page{overflow:visible}" if mode == "print" else ""))
+                 + (" .page{overflow:visible}" if mode == "print" else "")
+                 # on screen one page is seen at a time: equal margins left and right
+                 + (" :root{--inside:16mm;--outside:16mm}" if mode == "ebook" else ""))
     src = work / f"{mode}.html"
     src.write_text(page_shell(css, sheets, extra_css), encoding="utf-8")
     pg = open_page(browser, src.as_uri())
@@ -913,7 +948,7 @@ def write_pdf(browser, work: Path, css: Path, pages: list[Page], out: Path, mode
     # top-left, so set exact boxes measured from the top-left corner.
     mm = 72 / 25.4
     doc = pymupdf.open(out)
-    if mode == "proof":
+    if mode in ("proof", "ebook"):
         W, H = TRIM_W * mm, TRIM_H * mm
     else:
         W, H = (TRIM_W + 2 * (BLEED + SLUG)) * mm, (TRIM_H + 2 * (BLEED + SLUG)) * mm
@@ -924,6 +959,10 @@ def write_pdf(browser, work: Path, css: Path, pages: list[Page], out: Path, mode
             b0, t0 = SLUG * mm, (SLUG + BLEED) * mm
             page.set_bleedbox(pymupdf.Rect(b0, b0, W - b0, H - b0))
             page.set_trimbox(pymupdf.Rect(t0, t0, W - t0, H - t0))
+    if outline:
+        doc.set_toc(outline)
+    if meta:
+        doc.set_metadata(meta)
     kinds = {f[2] for i in range(doc.page_count) for f in doc.get_page_fonts(i)}
     if "Type3" in kinds:
         print("  !! Type 3 fonts in PDF (variable web fonts?) - printers may reject this file", file=sys.stderr)
@@ -940,7 +979,8 @@ def main():
     ap.add_argument("--part", type=int, required=True)
     ap.add_argument("--arabic-digits", action="store_true", help="keep 0-9 instead of Thai digits")
     ap.add_argument("--align", default="justify", choices=["justify", "left"])
-    ap.add_argument("--only", choices=["proof", "print", "both"], default="both")
+    ap.add_argument("--only", choices=["ebook", "proof", "print", "all"], default="ebook",
+                    help="ebook (default): screen PDF + cover image; proof/print: pocket book for printing")
     args = ap.parse_args()
 
     root = REPO / "books" / args.book
@@ -999,20 +1039,46 @@ def main():
         browser = chrome.new_context(user_agent=STATIC_FONT_UA)
         print("measuring galley ...")
         measure(browser, work, css, list(flows.values()), [], args.align)
-        body, toc_body = build_book(book, part, flows, typo, {"eps": eps})
-        fm, _ = front_matter(book, part, flows, typo, {"eps": eps}, toc_body)
-        pages = fm + body
-        while len(pages) % 4:          # whole sheets for the printer
-            blank = Page("blank")
-            blank.side = "recto" if len(pages) % 2 == 0 else "verso"
-            pages.append(blank)
-        stem = f"{book['slug']}_part{args.part}_pocketbook"
-        modes = ["proof", "print"] if args.only == "both" else [args.only]
+        modes = ["ebook", "proof", "print"] if args.only == "all" else [args.only]
+        stem = f"{book['slug']}_part{args.part}"
+        pname = part["name"].split(":", 1)[1].strip()
         for mode in modes:
-            out = out_dir / f"{stem}_{mode}.pdf"
-            n_over, over = write_pdf(browser, work, css, pages, out, mode, args.align)
+            ebook = mode == "ebook"
+            body, toc_body = build_book(book, part, flows, typo, {"eps": eps}, ebook=ebook)
+            lead = [cover_page(book, part, typo, root)] if ebook else []
+            fm, ftoc = front_matter(book, part, flows, typo, {"eps": eps}, toc_body,
+                                    ebook=ebook, offset=len(lead))
+            pages = lead + fm + body
+            if not ebook:
+                while len(pages) % 4:          # whole sheets for the printer
+                    blank = Page("blank")
+                    blank.side = "recto" if len(pages) % 2 == 0 else "verso"
+                    pages.append(blank)
+            b0 = len(lead) + len(fm) + 1        # 1-based page of the first body page
+            f0 = len(lead) + 1
+            outline = ([[1, "ปก", 1]] if ebook else []) + [
+                [1, "คำนำ", f0 + ftoc["preface"]],
+                [1, "สารบัญ", f0 + ftoc["toc"]],
+                [1, BeautifulSoup(typo.text(book.get("timeline_heading", "เส้นเวลา")), "html.parser").get_text(), f0 + ftoc["timeline"]],
+                [1, f"ภาคที่ {typo.num(args.part)} · {pname}", b0 + toc_body["part"]],
+            ] + [[2, f"ตอนที่ {typo.num(ep['num'])} · " + BeautifulSoup(typo.text(ep["title"]), "html.parser").get_text(), b0 + toc_body[f"ep{ep['num']}"]] for ep in eps] + [
+                [1, "บรรณานุกรม", b0 + toc_body["bib"]]]
+            meta = {"title": f"{book['title']} ภาคที่ {typo.num(args.part)}: {pname}",
+                    "author": book.get("author", ""), "subject": book.get("subtitle", ""),
+                    "keywords": book.get("category", ""), "creator": "Tobe-Writer pocketbook builder",
+                    "producer": "Tobe-Writer"}
+            out = out_dir / (f"{stem}_ebook.pdf" if ebook else f"{stem}_pocketbook_{mode}.pdf")
+            n_over, over = write_pdf(browser, work, css, pages, out, mode, args.align, outline, meta)
             print(f"{mode}: {out}  ({len(pages)} pages, front matter {len(fm)}, body {len(body)})"
                   + (f"  !! overflow on pages {over}" if n_over else "  text fits every page"))
+            if ebook:
+                cover_out = out_dir / f"{stem}_cover.jpg"
+                doc = pymupdf.open(out)
+                pix = doc[0].get_pixmap(matrix=pymupdf.Matrix(1600 / doc[0].rect.width, 1600 / doc[0].rect.width))
+                from PIL import Image
+                Image.frombytes("RGB", (pix.width, pix.height), pix.samples).save(cover_out, quality=92)
+                doc.close()
+                print(f"cover: {cover_out}  ({pix.width}x{pix.height}px)")
         browser.close()
         chrome.close()
     if WARNINGS:

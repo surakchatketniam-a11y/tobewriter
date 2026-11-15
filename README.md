@@ -32,7 +32,8 @@ Tobe-Writer/
 ผู้เขียน/ผู้สร้างภาพต้องทำตาม **[คู่มือส่งต้นฉบับ](คู่มือส่งต้นฉบับ_สำหรับผู้เขียนและผู้สร้างภาพ.md)** ซึ่งกำหนดรูปแบบต้นฉบับ ขนาดภาพ บรรณานุกรม และขั้นตอนส่งมอบ ส่วนการรวมเล่ม pocket book ใช้:
 
 ```powershell
-python tools/pocketbook/build_pocketbook.py --book 01_กระดานศึกพระเจ้าตาก --part 1
+python tools/pocketbook/build_pocketbook.py --book 01_กระดานศึกพระเจ้าตาก --part 1              # ebook (ค่าเริ่มต้น)
+python tools/pocketbook/build_pocketbook.py --book 01_กระดานศึกพระเจ้าตาก --part 1 --only all   # ebook + ฉบับพิมพ์
 ```
 
 ## วิธีสร้างไฟล์ PDF มาตรฐานโรงพิมพ์
