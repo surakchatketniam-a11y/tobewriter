@@ -1,0 +1,256 @@
+/* ==========================================================================
+   Pocket book interior — 130 × 185 mm trim
+   Every vertical measure is a whole number of baseline-grid lines (--lh),
+   so facing pages line up and the paginator can count in lines.
+   ========================================================================== */
+
+:root {
+  --trim-w: 130mm;
+  --trim-h: 185mm;
+  --bleed: 3mm;
+  --slug: 10mm;               /* room for crop marks in the print PDF */
+
+  --lh: 17pt;                 /* baseline grid */
+  --lines: 25;                /* text lines per full page */
+  --tb-top: 15mm;
+  --tb-w: 98mm;
+  --inside: 18mm;
+  --outside: 14mm;
+
+  --ink: #1f1b17;
+  --muted: #6d655b;
+  --accent: #8b261d;
+  --gold: #9a7a45;
+  --paper-tint: #f3ece0;
+
+  --serif: "Noto Serif Thai", "Noto Serif", serif;
+  --sans: "Noto Sans Thai", "Noto Sans", sans-serif;
+}
+
+* { box-sizing: border-box; }
+html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: 10.5pt;
+  line-height: var(--lh);
+  color: var(--ink);
+  font-kerning: normal;
+  font-synthesis: style;
+  word-break: normal;
+  line-break: auto;
+  hyphens: manual;
+  text-justify: inter-character;   /* Thai: distribute between characters, not only at spaces */
+}
+img { display: block; }
+.nw { white-space: nowrap; }
+
+/* ---------- text blocks (margins are added inline by the paginator) ---------- */
+.b { margin: 0; }
+.p { text-indent: 1.6em; text-align: var(--align, justify); }
+.p.noindent, .p.cont { text-indent: 0; }
+.split-a { text-align-last: justify; }
+.p strong, .li strong { font-weight: 700; }
+em { font-style: italic; }
+
+.li { position: relative; padding-left: 1.7em; text-align: var(--align, justify); }
+.li .mk {
+  position: absolute; left: 0.25em; top: 0;
+  font-family: var(--sans); font-weight: 600; font-size: 9pt; color: var(--accent);
+}
+
+/* act heading: 2 lines (eyebrow + title) */
+.h-act { text-align: center; padding-bottom: var(--lh); }
+.h-act .eb {
+  font: 600 7.5pt/var(--lh) var(--sans);
+  letter-spacing: 0.04em; color: var(--accent);
+}
+.h-act .eb::before, .h-act .eb::after {
+  content: ""; display: inline-block; width: 7mm; height: 0;
+  border-top: 0.4pt solid var(--gold); vertical-align: middle; margin: 0 2.2mm 0.6mm;
+}
+.h-act .tt { font: 700 12.5pt/var(--lh) var(--serif); text-wrap: balance; }
+
+.h-sub {
+  font: 700 9.8pt/var(--lh) var(--sans);
+  color: var(--accent);
+  text-wrap: balance;
+}
+
+.scene { height: calc(2 * var(--lh)); display: flex; align-items: center; justify-content: center; gap: 2.4mm; }
+.scene i { width: 1.6mm; height: 1.6mm; background: var(--gold); transform: rotate(45deg); }
+
+.end { text-align: center; }
+.end .orn { height: var(--lh); display: flex; align-items: center; justify-content: center; gap: 2.4mm; }
+.end .orn i { width: 1.6mm; height: 1.6mm; background: var(--gold); transform: rotate(45deg); }
+.end .et { font: 700 8.5pt/var(--lh) var(--sans); letter-spacing: 0.04em; color: var(--accent); }
+.end .nx { font: 400 8.8pt/var(--lh) var(--serif); color: var(--muted); text-wrap: balance; }
+
+/* chapter opener title block */
+.ch-title { text-align: left; }
+.ch-title .eb { font: 600 8pt/var(--lh) var(--sans); letter-spacing: 0.04em; color: var(--accent); }
+.ch-title .main { font: 800 19pt/calc(2 * var(--lh)) var(--serif); letter-spacing: -0.005em; text-wrap: balance; }
+.ch-title .sub { font: 500 12pt/var(--lh) var(--serif); color: #3e3730; text-wrap: balance; }
+.ch-title .rule { height: var(--lh); display: flex; align-items: center; }
+.ch-title .rule::before { content: ""; width: 14mm; border-top: 1.2pt solid var(--accent); }
+
+/* generic section title (preface, timeline, bibliography) */
+.sec-title { text-align: center; }
+.sec-title .eb { font: 600 7pt/var(--lh) var(--sans); letter-spacing: 0.32em; color: var(--accent); }
+.sec-title .main { font: 800 17pt/calc(2 * var(--lh)) var(--serif); }
+.sec-title .sub { font: 500 10.5pt/var(--lh) var(--serif); color: var(--muted); text-wrap: balance; }
+.sec-title .rule { height: var(--lh); display: flex; align-items: center; justify-content: center; gap: 2.4mm; }
+.sec-title .rule i { width: 1.6mm; height: 1.6mm; background: var(--gold); transform: rotate(45deg); }
+
+/* timeline entries */
+.tl { padding-left: 4mm; border-left: 0.8pt solid #d9cdb8; }
+.tl.cur { border-left: 2.2pt solid var(--accent); }
+.tl .y { font: 700 8.8pt/var(--lh) var(--sans); color: var(--accent); }
+.tl .y span { font-weight: 500; color: var(--muted); }
+.tl .t { font: 400 9.6pt/var(--lh) var(--serif); text-align: var(--align, justify); }
+.tl .here { font: 600 7pt/var(--lh) var(--sans); color: #fff; background: var(--accent); padding: 0.3mm 1.6mm; border-radius: 1mm; margin-left: 1.5mm; letter-spacing: 0.06em; }
+
+/* bibliography */
+.bibtopic { font: 600 8.2pt/var(--lh) var(--sans); color: var(--muted); text-align: left; }
+.bib { padding-left: 6mm; text-indent: -6mm; font-size: 9.2pt; text-align: left; }
+.bib.cont { text-indent: 0; }
+
+/* ---------- pages ---------- */
+body > .page, body > .sheet { break-after: page; }
+.page {
+  position: relative;
+  width: var(--trim-w); height: var(--trim-h);
+  overflow: hidden;
+  background: #fff;
+}
+.tb {
+  position: absolute; top: var(--tb-top);
+  width: var(--tb-w); height: calc(var(--lines) * var(--lh));
+  overflow: hidden;
+}
+.recto .tb { left: var(--inside); }
+.verso .tb { left: var(--outside); }
+
+.rh {
+  position: absolute; top: 7.6mm; width: var(--tb-w);
+  font: 500 6.8pt/1 var(--sans); letter-spacing: 0.04em; color: var(--muted);
+  text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.recto .rh { left: var(--inside); }
+.verso .rh { left: var(--outside); }
+.folio {
+  position: absolute; bottom: 9.5mm; width: var(--tb-w);
+  font: 500 8pt/1 var(--sans); color: var(--ink); text-align: center; letter-spacing: 0.05em;
+}
+.recto .folio { left: var(--inside); }
+.verso .folio { left: var(--outside); }
+
+/* chapter opener art: bleeds off top and both sides */
+.opener-art {
+  position: absolute; top: calc(-1 * var(--bleed)); left: calc(-1 * var(--bleed));
+  width: calc(var(--trim-w) + 2 * var(--bleed));
+}
+.opener-art img { width: 100%; height: auto; }
+.opener-art::after {          /* soft fade into the page */
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 9mm;
+  background: linear-gradient(to bottom, rgba(255,255,255,0), #fff);
+}
+
+/* full-page figure */
+.figpage .tb { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.figpage figure { margin: 0; display: flex; flex-direction: column; align-items: center; width: 100%; }
+.figpage img { max-width: 100%; max-height: 124mm; width: auto; height: auto; box-shadow: 0 0 0 0.3pt #cbbfa9; }
+.figpage figcaption {
+  margin-top: 3.2mm; max-width: 88mm;
+  font: 400 7.6pt/1.55 var(--sans); color: var(--muted); text-align: center; text-wrap: balance;
+}
+.figpage figcaption b { color: var(--accent); font-weight: 600; letter-spacing: 0.04em; }
+
+/* part opener: full-bleed colour page */
+.partpage { background: var(--accent); color: #f5ead6; }
+.partpage .bg {
+  position: absolute; inset: calc(-1 * var(--bleed));
+  background:
+    radial-gradient(ellipse at 50% 38%, rgba(255,214,150,0.16), rgba(0,0,0,0) 62%),
+    linear-gradient(170deg, #9a2c21 0%, #7a1f17 55%, #4e130e 100%);
+}
+.partpage .inner { position: absolute; left: 16mm; right: 16mm; top: 34mm; text-align: center; }
+.partpage .eb { font: 600 8pt/1 var(--sans); letter-spacing: 0.06em; color: #e2c58f; }
+.partpage .num { font: 800 64pt/1.15 var(--serif); color: #e9cf98; margin-top: 4mm; }
+.partpage .name { font: 800 21pt/1.45 var(--serif); margin-top: 1mm; text-wrap: balance; }
+.partpage .yrs { font: 500 9pt/1 var(--sans); letter-spacing: 0.04em; color: #e2c58f; margin-top: 4mm; }
+.partpage .rule { display: flex; justify-content: center; gap: 2.4mm; margin: 8mm 0 7mm; }
+.partpage .rule i { width: 1.8mm; height: 1.8mm; background: #e2c58f; transform: rotate(45deg); }
+.partpage .desc { font: 400 9.2pt/1.85 var(--serif); color: #f1e3c9; text-wrap: pretty; }
+
+/* "in this part" list on the verso after the part opener */
+.inpart .inner { position: absolute; left: var(--outside); width: var(--tb-w); top: 40mm; }
+.inpart .eb { font: 600 7.5pt/1 var(--sans); letter-spacing: 0.06em; color: var(--accent); text-align: center; }
+.inpart ol { list-style: none; margin: 9mm 0 0; padding: 0; }
+.inpart li { display: grid; grid-template-columns: 10mm 1fr; padding: 3.2mm 0; border-top: 0.4pt solid #ddd2bf; }
+.inpart li:last-child { border-bottom: 0.4pt solid #ddd2bf; }
+.inpart .n { font: 800 15pt/1.2 var(--serif); color: var(--gold); }
+.inpart .t { font: 700 10pt/1.5 var(--serif); }
+.inpart .s { font: 400 8.6pt/1.5 var(--serif); color: var(--muted); }
+
+/* front matter fixed pages */
+.halftitle .inner { position: absolute; left: 0; right: 0; top: 52mm; text-align: center; }
+.halftitle .t1 { font: 600 9pt/1 var(--sans); letter-spacing: 0.06em; color: var(--muted); }
+.halftitle .t2 { font: 800 19pt/1.5 var(--serif); margin-top: 3mm; }
+.halftitle .t3 { font: 500 9pt/1 var(--sans); letter-spacing: 0.06em; color: var(--accent); margin-top: 5mm; }
+
+.series .inner { position: absolute; left: var(--outside); width: var(--tb-w); top: 30mm; }
+.series .eb { font: 600 7.5pt/1 var(--sans); letter-spacing: 0.04em; color: var(--muted); text-align: center; }
+.series .bt { font: 700 11pt/1.5 var(--serif); text-align: center; margin-top: 2mm; }
+.series ol { list-style: none; padding: 0; margin: 8mm 0 0; }
+.series li { padding: 2.6mm 0; border-top: 0.4pt solid #ddd2bf; }
+.series li:last-child { border-bottom: 0.4pt solid #ddd2bf; }
+.series .p1 { font: 600 7.5pt/1.6 var(--sans); letter-spacing: 0.1em; color: var(--accent); }
+.series .p2 { font: 700 9.6pt/1.55 var(--serif); }
+.series .p3 { font: 400 7.6pt/1.5 var(--sans); color: var(--muted); }
+.series li.cur .p2::after { content: "  •  เล่มนี้"; font: 600 7pt var(--sans); color: var(--accent); letter-spacing: 0.08em; }
+
+.titlepage .inner { position: absolute; left: var(--inside); width: var(--tb-w); top: 30mm; text-align: center; }
+.titlepage .eb { font: 600 7.6pt/1 var(--sans); letter-spacing: 0.06em; color: var(--accent); }
+.titlepage .pre { font: 700 13pt/1 var(--serif); color: var(--gold); margin-top: 10mm; letter-spacing: 0.1em; }
+.titlepage .t { font: 800 23pt/1.45 var(--serif); margin-top: 2mm; text-wrap: balance; }
+.titlepage .st { font: 400 9.4pt/1.75 var(--serif); color: #4a423a; margin-top: 4mm; text-wrap: balance; }
+.titlepage .rule { display: flex; justify-content: center; gap: 2.4mm; margin: 9mm 0; }
+.titlepage .rule i { width: 1.7mm; height: 1.7mm; background: var(--gold); transform: rotate(45deg); }
+.titlepage .pt { font: 600 8pt/1 var(--sans); letter-spacing: 0.04em; color: var(--muted); }
+.titlepage .pn { font: 800 14pt/1.6 var(--serif); color: var(--accent); margin-top: 2mm; }
+.titlepage .py { font: 500 8pt/1 var(--sans); letter-spacing: 0.04em; color: var(--muted); margin-top: 1.5mm; }
+.titlepage .foot { position: absolute; left: var(--inside); width: var(--tb-w); bottom: 20mm; text-align: center; }
+.titlepage .au { font: 700 10.5pt/1.6 var(--serif); }
+.titlepage .pub { font: 500 7.6pt/1.6 var(--sans); letter-spacing: 0.04em; color: var(--muted); margin-top: 6mm; }
+
+.copyright .inner { position: absolute; left: var(--outside); width: var(--tb-w); bottom: 20mm; font: 400 7.4pt/1.75 var(--sans); color: #3f3831; }
+.copyright .inner p { margin: 0 0 2.6mm; }
+.copyright .inner b { font-weight: 700; color: var(--ink); }
+.copyright .cip { border: 0.4pt solid #cfc3ad; padding: 2.4mm 3mm; margin-bottom: 3.4mm !important; color: var(--muted); }
+.ph { color: #a0522d; }      /* placeholder text still to be supplied */
+
+/* table of contents */
+.toc .inner { position: absolute; left: var(--inside); width: var(--tb-w); top: var(--tb-top); }
+.toc .row { display: grid; grid-template-columns: 1fr auto; column-gap: 2mm; align-items: baseline; }
+.toc .lead { display: flex; align-items: baseline; gap: 1.6mm; min-width: 0; }
+.toc .lead::after { content: ""; flex: 1; border-bottom: 0.6pt dotted #b9ab92; transform: translateY(-1mm); min-width: 6mm; }
+.toc .pg { font: 600 9pt/1 var(--sans); color: var(--ink); }
+.toc .fm { font: 500 9.4pt/var(--lh) var(--serif); }
+.toc .part { margin-top: calc(var(--lh) * 0.6); padding-bottom: 1mm; font: 700 8pt/var(--lh) var(--sans); color: var(--accent); border-bottom: 0.4pt solid #ddd2bf; }
+.toc .ch { display: grid; grid-template-columns: 8mm 1fr; margin-top: calc(var(--lh) * 0.45); }
+.toc .ch .n { font: 800 13pt/var(--lh) var(--serif); color: var(--gold); }
+.toc .ch .tt { font: 700 9.8pt/var(--lh) var(--serif); }
+.toc .ch .ts { font: 400 8.4pt/1.5 var(--serif); color: var(--muted); }
+.toc .back { margin-top: calc(var(--lh) * 0.9); }
+
+/* ---------- print sheet (bleed + crop marks) ---------- */
+.sheet { position: relative; overflow: hidden; background: #fff; }
+.sheet .bleedbox { position: absolute; overflow: hidden; }
+.sheet .bleedbox > .page { position: absolute; overflow: visible; }
+.sheet .mark { position: absolute; background: #000; }
+.sheet .slugtxt { position: absolute; font: 400 5.5pt/1 var(--sans); color: #000; white-space: nowrap; }
+
+/* galley used only for measuring */
+.galley { width: var(--tb-w); margin: 0 0 20mm 0; }
+.galley.wide { width: var(--tb-w); }
