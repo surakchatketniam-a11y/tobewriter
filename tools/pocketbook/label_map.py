@@ -25,7 +25,7 @@ import html
 import json
 from pathlib import Path
 
-from PIL import Image
+from PIL import Image, ImageFilter
 from playwright.sync_api import sync_playwright
 
 HERE = Path(__file__).resolve().parent
@@ -54,6 +54,25 @@ img.base { position: absolute; left: 0; top: 0; width: %(w)spx; height: %(h)spx;
           font: 600 %(legendsize)spx/1.3 "Noto Serif Thai"; color: #2a1c12; }
 .legend .h { grid-column: 1 / -1; text-align: center; font-weight: 800; color: #7a2a1d; margin-bottom: 4px; }
 .legend b { color: #7a2a1d; margin-right: .35em; }
+/* atlas-plate style (Book 1): navy badges, typeset header and summary box */
+.badge { position: absolute; transform: translate(-50%%, -50%%); width: %(badge)spx; height: %(badge)spx;
+         border-radius: 50%%; background: #1F2A44; border: 2px solid #fff; box-shadow: 0 0 0 1px #1F2A44;
+         color: #fff; font: 700 %(badgefont)spx/%(badge)spx "Noto Sans Thai"; text-align: center; }
+.badge span { position: relative; top: -1px; }
+.legend.badges { row-gap: 9px; column-gap: 46px; }
+.legend.badges b { display: inline-block; width: 1.45em; height: 1.45em; line-height: 1.45em; border-radius: 50%%;
+                   background: #1F2A44; color: #fff; text-align: center; font: 700 .82em/1.75em "Noto Sans Thai";
+                   margin-right: .55em; vertical-align: .05em; }
+.legend.badges .h { color: #2a1c12; font-size: 1.12em; margin-bottom: 8px; }
+.hdr { transform: translate(-50%%, -50%%); text-align: center; color: #1f1b17; white-space: normal; }
+.hdr .k { font: 600 %(kickersize)spx/1.3 "Noto Sans Thai"; color: #9E2B25; }
+.hdr .t { font: 800 %(titlesize)spx/1.25 "Noto Serif Thai"; margin-top: 6px; }
+.hdr .s { font: 600 %(subsize)spx/1.35 "Noto Sans Thai"; color: #3a332c; margin-top: 8px; }
+.hdr .s i { color: #9E2B25; font-style: normal; }
+.hdr hr { border: 0; border-top: 1.5px solid #9E2B25; width: 92%%; margin: 12px auto 0; }
+.summary { transform: translate(-50%%, -50%%); text-align: center; white-space: normal; color: #2a1c12; }
+.summary .h { font: 800 %(sumhead)spx/1.3 "Noto Serif Thai"; }
+.summary .b { font: 500 %(sumsize)spx/1.45 "Noto Sans Thai"; margin-top: 4px; }
 """
 
 
@@ -61,10 +80,13 @@ def esc(s):
     return html.escape(str(s).translate(THAI_DIGITS))
 
 
-def marker_html(m, sizes):
+def marker_html(m, sizes, badges=False):
     x, y, r = m["x"], m["y"], m.get("r", 26)
-    out = [f'<div class="num" style="left:{x}px;top:{y}px;font-size:{m.get("numsize", sizes["numsize"])}px">'
-           f'{esc(m["n"])}</div>']
+    if badges:   # draw our own numbered badge over (or instead of) the base map's circle
+        out = [f'<div class="badge" style="left:{x}px;top:{y}px"><span>{esc(m["n"])}</span></div>']
+    else:
+        out = [f'<div class="num" style="left:{x}px;top:{y}px;font-size:{m.get("numsize", sizes["numsize"])}px">'
+               f'{esc(m["n"])}</div>']
     if m.get("label"):
         gap = r + m.get("gap", 8)
         pos = m.get("pos", "below")
@@ -93,6 +115,16 @@ def build(spec_path: Path):
     root = spec_path.parent
     base = Image.open(root / spec["base"]).convert("RGB")
     bw, bh = base.size
+    # "patches": paint over unwanted marks by cloning a nearby piece of the same terrain,
+    # with a soft edge so the seam does not show.
+    for pt in spec.get("patches", []):
+        x, y, w, h = pt["x"], pt["y"], pt["w"], pt["h"]
+        src = base.crop((x + pt["dx"], y + pt["dy"], x + pt["dx"] + w, y + pt["dy"] + h))
+        mask = Image.new("L", (w, h), 0)
+        f = max(4, min(w, h) // 8)
+        mask.paste(255, (f, f, w - f, h - f))
+        mask = mask.filter(ImageFilter.GaussianBlur(f / 2))
+        base.paste(src, (x, y), mask)
     out_w = spec.get("out_width", 1536)
     scale = out_w / bw
     out_h = round(bh * scale)
@@ -100,14 +132,26 @@ def build(spec_path: Path):
     base.resize((out_w, out_h), Image.LANCZOS).save(work)
 
     sizes = {"w": bw, "h": bh, "numsize": 30, "labsize": 27, "watersize": 30, "regionsize": 34,
-             "notesize": 20, "kickersize": 18, "titlesize": 30, "legendsize": 20}
+             "notesize": 20, "kickersize": 18, "titlesize": 30, "legendsize": 20, "subsize": 19,
+             "badge": 30, "badgefont": 18, "sumhead": 18, "sumsize": 15}
     sizes.update(spec.get("sizes", {}))
     parts = [f'<img class="base" src="{work.name}">']
     b = spec.get("banner")
     if b:
         parts.append(f'<div class="abs banner" style="left:{b["x"]}px;top:{b["y"]}px;width:{b["w"]}px;white-space:normal">'
                      f'<div class="k">{esc(b.get("kicker", ""))}</div><div class="t">{esc(b["title"])}</div></div>')
-    parts += [marker_html(m, sizes) for m in spec.get("markers", [])]
+    hd = spec.get("header")
+    if hd:
+        sub = esc(hd.get("sub", "")).replace(" • ", " <i>•</i> ")
+        parts.append(f'<div class="abs hdr" style="left:{hd.get("x", bw // 2)}px;top:{hd["y"]}px;width:{hd["w"]}px">'
+                     f'<div class="k">{esc(hd.get("kicker", ""))}</div><div class="t">{esc(hd["title"])}</div>'
+                     f'<div class="s">{sub}</div><hr></div>')
+    badges = spec.get("badges", False)
+    parts += [marker_html(m, sizes, badges) for m in spec.get("markers", [])]
+    sm = spec.get("summary")
+    if sm:
+        parts.append(f'<div class="abs summary" style="left:{sm.get("x", bw // 2)}px;top:{sm["y"]}px;width:{sm["w"]}px">'
+                     f'<div class="h">{esc(sm["title"])}</div><div class="b">{esc(sm["text"])}</div></div>')
     parts += [text_html(t) for t in spec.get("texts", [])]
     lg = spec.get("legend")
     if lg:
@@ -117,7 +161,7 @@ def build(spec_path: Path):
             items += (f'<div><i style="display:inline-block;width:34px;vertical-align:middle;margin-right:.4em;{line}">'
                       f'</i>{esc(k["text"])}</div>')
         head = f'<div class="h">{esc(lg["title"])}</div>' if lg.get("title") else ""
-        parts.append(f'<div class="abs legend" style="left:{lg["x"]}px;top:{lg["y"]}px;'
+        parts.append(f'<div class="abs legend{" badges" if badges else ""}" style="left:{lg["x"]}px;top:{lg["y"]}px;'
                      f'grid-template-columns:repeat({lg.get("cols", 2)}, auto)">{head}{items}</div>')
 
     page = root / (spec_path.stem + ".work.html")
