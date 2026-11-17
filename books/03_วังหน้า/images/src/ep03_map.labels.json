@@ -1,5 +1,5 @@
 {
-  "base": "ep03_map_base.png",
+  "base": "ep03_map_base_swordfix.png",
   "out": "../ep03_map.png",
   "banner": {
     "x": 543,
@@ -20,8 +20,8 @@
       "y": 993,
       "label": "กรุงธนบุรี",
       "pos": "right",
-      "dx": 20,
-      "dy": 34
+      "dx": 70,
+      "dy": 85
     },
     {
       "n": 2,
@@ -29,7 +29,7 @@
       "y": 655,
       "label": "ด่านจอหอ – พิมาย",
       "pos": "above",
-      "dy": -40
+      "dy": -75
     },
     {
       "n": 3,
