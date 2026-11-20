@@ -351,7 +351,13 @@ def parse_episode(path: Path, ep: int, images: Path, typo: Typo) -> dict:
     text = path.read_text(encoding="utf-8")
     title_line = next(l for l in text.splitlines() if l.startswith("## "))
     title = title_line[3:].split(":", 1)[1].strip() if ":" in title_line else title_line[3:].strip()
-    body = "\n".join(l for l in text.splitlines() if not l.startswith(("# ", "## ")))
+    lines = text.splitlines()
+    # working sections after the episode ("## ตารางที่มา..." / "## รายการภาพ...") are never printed
+    for k, l in enumerate(lines):
+        if re.match(r"^## (ตารางที่มา|รายการภาพ)", l):
+            lines = lines[:k]
+            break
+    body = "\n".join(l for l in lines if not l.startswith(("# ", "## ")))
     soup = md_soup(body)
     els = [e for e in soup.children if isinstance(e, Tag)]
 
@@ -368,7 +374,7 @@ def parse_episode(path: Path, ep: int, images: Path, typo: Typo) -> dict:
         img = e.find("img") if e.name == "p" else None
         if img is not None and e.get_text(strip=True) == "":
             src, alt = img["src"], img.get("alt", "")
-            if art is None and not blocks:
+            if art is None and all(bl.cls == "noindent" for bl in blocks):
                 art = resolve(src)
             else:
                 cap = alt
