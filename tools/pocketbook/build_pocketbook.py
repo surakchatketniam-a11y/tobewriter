@@ -897,12 +897,14 @@ def front_matter(book: dict, part: dict, flows: dict, typo: Typo, extra: dict, t
 
 
 def cover_page(book: dict, part: dict, typo: Typo, root: Path) -> Page:
-    """Front cover for the ebook. Uses images/cover_partN.(jpg|png) when it exists."""
+    """Front cover for the ebook. Uses images/cover_partN_hires.png, else cover_partN.(jpg|png), when present."""
     title = book["title"]
     t_pre, t_main = (" ".join(title.split(" ", 2)[:2]), title.split(" ", 2)[2]) if title.count(" ") >= 2 else ("", title)
     pname = part["name"].split(":", 1)[1].strip()
-    art = next((root / "images" / f"cover_part{part['part']}.{e}" for e in ("jpg", "png")
-                if (root / "images" / f"cover_part{part['part']}.{e}").exists()), None)
+    # a print-resolution cover (cover_partN_hires.png) wins over the screen cover when present
+    cands = [f"cover_part{part['part']}_hires.png",
+             f"cover_part{part['part']}.jpg", f"cover_part{part['part']}.png"]
+    art = next(((root / "images" / c) for c in cands if (root / "images" / c).exists()), None)
     bg = (f'<div class="cv-art" style="background-image:url(\'{art.as_uri()}\')"></div>' if art
           else '<div class="cv-plain"></div>')
     author = typo.text(book["author"]) if book.get("author") else ""
